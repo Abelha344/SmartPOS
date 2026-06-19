@@ -75,6 +75,10 @@ DATABASES = {
     }
 }
 
+_postgres_host = DATABASES["default"]["HOST"]
+if os.getenv("POSTGRES_SSL", "").lower() in ("require", "true", "1") or "neon.tech" in _postgres_host:
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
@@ -111,17 +115,27 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
 }
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1")
-CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": REDIS_URL,
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        },
-        "KEY_PREFIX": "smartpos",
+REDIS_URL = os.getenv("REDIS_URL", "redis://127.0.0.1:6379/1").strip()
+_use_redis = REDIS_URL and "127.0.0.1" not in REDIS_URL and "localhost" not in REDIS_URL
+
+if _use_redis:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+            },
+            "KEY_PREFIX": "smartpos",
+        }
     }
-}
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "smartpos-idempotency",
+        }
+    }
 
 FRONTEND_BASE_URL = os.getenv("FRONTEND_BASE_URL", "http://localhost:5173").rstrip("/")
 
