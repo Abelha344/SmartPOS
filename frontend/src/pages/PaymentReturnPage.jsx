@@ -47,7 +47,7 @@ const PaymentReturnPage = () => {
         sessionStorage.removeItem("smartpos_pending_payment");
         setStatus("success");
         setMessage(
-          `Chapa payment of ${formatMoney(response.transaction.amount, response.transaction.currency)} completed. Receipt ${response.transaction.receipt_number}.`
+          `Payment successful. ${formatMoney(response.transaction.amount, response.transaction.currency)} paid via Chapa. Receipt ${response.transaction.receipt_number}.`
         );
       } catch (verifyError) {
         if (verifyError instanceof ApiError && verifyError.status === 401) {

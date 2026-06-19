@@ -158,7 +158,7 @@ const CheckoutPage = () => {
     setBasket([]);
     setPaymentStatus("success");
     setPaymentMessage(
-      `Cash payment of ${formatMoney(response.amount, response.currency)} received. Receipt ${response.receipt_number}.`
+      `Paid successfully. ${formatMoney(response.amount, response.currency)} received in cash. Receipt ${response.receipt_number}.`
     );
     const refreshedProducts = await apiClient("/catalog/products/", {}, token);
     setProducts(refreshedProducts);
@@ -374,7 +374,7 @@ const CheckoutPage = () => {
         message={paymentMessage}
         onAction={paymentStatus === "success" ? resetCheckout : dismissFailure}
         status={paymentStatus}
-        title={paymentStatus === "success" ? "Payment Successful" : "Payment Failed"}
+        title={paymentStatus === "success" ? "Paid Successfully" : "Payment Failed"}
       />
     </section>
   );

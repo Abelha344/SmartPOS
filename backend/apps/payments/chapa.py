@@ -18,7 +18,8 @@ class ChapaClient:
   def __init__(self) -> None:
       self.secret_key = settings.CHAPA_SECRET_KEY
       self.base_url = settings.CHAPA_BASE_URL.rstrip("/")
-      self.mock_mode = settings.CHAPA_MOCK_MODE
+      # Mock checkout page is for local dev only; live always uses Chapa test/live UI.
+      self.mock_mode = settings.CHAPA_MOCK_MODE and settings.DEBUG
 
   def _ensure_live_configuration(self) -> None:
       key = (self.secret_key or "").strip()
