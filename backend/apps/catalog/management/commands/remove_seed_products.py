@@ -20,7 +20,7 @@ DEFAULT_SEED_SKUS = (
 DEFAULT_SEED_CATEGORY_SLUGS = ("beverages", "bakery", "supplies")
 
 PREVIEW_SQL = """
--- Preview seed/metadata products and transaction links (run in psql or Neon SQL editor)
+-- Preview seed/metadata products (run in psql or Neon SQL editor)
 SELECT
     p.id,
     p.sku,
@@ -40,15 +40,15 @@ ORDER BY p.sku;
 
 class Command(BaseCommand):
     help = (
-        "Preview and safely remove seed-catalog dummy products (from seed_catalog). "
-        "Only deletes products with zero transaction line items."
+        "Preview and permanently delete seed-catalog dummy products (from seed_catalog). "
+        "Past sales keep line-item sku/name/price; the product link is cleared."
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
             "--confirm",
             action="store_true",
-            help="Actually delete eligible products. Without this flag, only a dry-run preview runs.",
+            help="Permanently delete matching seed products. Without this flag, only a dry-run preview runs.",
         )
         parser.add_argument(
             "--sku",
@@ -66,7 +66,7 @@ class Command(BaseCommand):
         dry_run = not options["confirm"]
         target_skus = tuple(options["skus"] or DEFAULT_SEED_SKUS)
 
-        products = (
+        products = list(
             Product.objects.filter(sku__in=target_skus)
             .select_related("category")
             .annotate(line_item_count=Count("line_items"))
@@ -79,51 +79,42 @@ class Command(BaseCommand):
         if dry_run:
             self.stdout.write(self.style.WARNING("DRY RUN — no records will be deleted. Pass --confirm to apply."))
         else:
-            self.stdout.write(self.style.WARNING("LIVE DELETE — eligible products will be removed."))
+            self.stdout.write(self.style.WARNING("LIVE DELETE — seed products will be permanently removed."))
         self.stdout.write(self.style.WARNING("=" * 72))
 
-        if not products.exists():
+        if not products:
             self.stdout.write(self.style.NOTICE(f"No products found for SKU(s): {', '.join(target_skus)}"))
             return
-
-        deletable: list[Product] = []
-        blocked: list[Product] = []
 
         self.stdout.write("")
         self.stdout.write(f"{'SKU':<12} {'Name':<28} {'Line items':<12} {'Action'}")
         self.stdout.write("-" * 72)
 
         for product in products:
-            action = "DELETE" if product.line_item_count == 0 else "SKIP (has sales history)"
-            if product.line_item_count == 0:
-                deletable.append(product)
+            if product.line_item_count:
+                action = "DELETE (sales history kept on line items)"
             else:
-                blocked.append(product)
+                action = "DELETE"
             self.stdout.write(
                 f"{product.sku:<12} {product.name[:28]:<28} {product.line_item_count:<12} {action}"
             )
 
-        missing_skus = sorted(set(target_skus) - set(products.values_list("sku", flat=True)))
+        found_skus = {product.sku for product in products}
+        missing_skus = sorted(set(target_skus) - found_skus)
         if missing_skus:
             self.stdout.write("")
             self.stdout.write(self.style.NOTICE(f"SKUs not in database: {', '.join(missing_skus)}"))
 
         self.stdout.write("")
-        self.stdout.write(f"Eligible for deletion: {len(deletable)}")
-        self.stdout.write(f"Blocked (PROTECT FK on line items): {len(blocked)}")
+        self.stdout.write(f"Products to delete: {len(products)}")
 
         if dry_run:
-            if deletable:
-                self.stdout.write("")
-                self.stdout.write(
-                    self.style.SUCCESS(
-                        "Re-run with --confirm to delete the eligible products listed above."
-                    )
-                )
+            self.stdout.write("")
+            self.stdout.write(self.style.SUCCESS("Re-run with --confirm to permanently delete them."))
             return
 
         deleted_count = 0
-        for product in deletable:
+        for product in products:
             product.delete()
             deleted_count += 1
 

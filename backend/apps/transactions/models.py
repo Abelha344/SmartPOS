@@ -61,7 +61,9 @@ class TransactionLineItem(models.Model):
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE, related_name="line_items")
     product = models.ForeignKey(
         "catalog.Product",
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="line_items",
     )
     sku = models.CharField(max_length=64)
