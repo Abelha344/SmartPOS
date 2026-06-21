@@ -96,6 +96,45 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+        "OPTIONS": {
+            "location": MEDIA_ROOT,
+            "base_url": MEDIA_URL,
+        },
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+_cloudinary_url = os.getenv("CLOUDINARY_URL", "").strip()
+_cloudinary_cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+_cloudinary_api_key = os.getenv("CLOUDINARY_API_KEY", "").strip()
+_cloudinary_api_secret = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+_use_cloudinary = bool(
+    _cloudinary_url
+    or (_cloudinary_cloud_name and _cloudinary_api_key and _cloudinary_api_secret)
+)
+
+if _use_cloudinary:
+    INSTALLED_APPS.insert(INSTALLED_APPS.index("django.contrib.staticfiles"), "cloudinary_storage")
+    INSTALLED_APPS.insert(INSTALLED_APPS.index("cloudinary_storage") + 1, "cloudinary")
+    CLOUDINARY_STORAGE = {
+        "SECURE": True,
+        "MEDIA_TAG": "smartpos_products",
+    }
+    if _cloudinary_url:
+        CLOUDINARY_STORAGE["CLOUDINARY_URL"] = _cloudinary_url
+    else:
+        CLOUDINARY_STORAGE["CLOUD_NAME"] = _cloudinary_cloud_name
+        CLOUDINARY_STORAGE["API_KEY"] = _cloudinary_api_key
+        CLOUDINARY_STORAGE["API_SECRET"] = _cloudinary_api_secret
+    STORAGES["default"] = {
+        "BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage",
+    }
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 

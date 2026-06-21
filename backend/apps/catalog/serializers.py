@@ -37,10 +37,13 @@ class ProductSerializer(serializers.ModelSerializer):
     def get_image_url(self, obj: Product) -> str | None:
         if not obj.image:
             return None
+        url = obj.image.url
+        if url.startswith(("http://", "https://")):
+            return url
         request = self.context.get("request")
         if request:
-            return request.build_absolute_uri(obj.image.url)
-        return obj.image.url
+            return request.build_absolute_uri(url)
+        return url
 
 
 class ProductWriteSerializer(serializers.ModelSerializer):
